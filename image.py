@@ -1313,12 +1313,12 @@ class HDF5MatrixCacheIterator(Iterator):
             batch = [index.__add__(offset) for index in index_array]
             batch_x = self.x[batch]
         if self.save_to_dir:
-			if self.x.ndim != 4:
-            	raise ValueError('Input data in `HDF5MatrixCacheIterator` '
+	    if self.x.ndim != 4:
+            		raise ValueError('Input data in `HDF5MatrixCacheIterator` '
                              'should have rank 4. You passed an array '
                              'with shape', self.x.shape)
 			channels_axis = 3 if self.data_format == 'channels_last' else 1
-		    if self.x.shape[channels_axis] not in {1, 3, 4}:
+	    if self.x.shape[channels_axis] not in {1, 3, 4}:
 		        warnings.warn('HDF5MatrixCacheIterator is set to use the '
 		                      'data format convention "' + data_format + '" '
 		                      '(channels on axis ' + str(channels_axis) + '), i.e. expected '
