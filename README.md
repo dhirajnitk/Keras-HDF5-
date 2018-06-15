@@ -30,7 +30,9 @@
  ###  write_predict_generator :  Writing bottlneck features to HDF5 File
  
  ```
+    
     #With a genuine model, you can write the bottleneck features to files after flow_from_directory
+    # h5py_file and h5py_label corresponding file names for train and label .h5 files. 
     model.write_predict_generator(generator, 
                                   steps=generator.samples//batch_size,
                                   max_queue_size=10,
