@@ -1,4 +1,4 @@
-# Keras-HDF5 Read/Write With h5py-cache. Keras OrderedEnqueuer is used to fetech from HDF5 caches
+# Keras-HDF5 Read/Write With h5py-cache. 
 
 ### write_generator: Writing resized image features to HDF5 File
 ``` 
@@ -19,6 +19,7 @@
     d1_all = f1_all.create_dataset('data', shape ,dtype='float32',chunks=chunk_shape,compression="lzf")
     d1_label = f1_label.create_dataset('data', (generator.samples,len(generator.table_pd.columns)) ,dtype='float32')
     # Writes Raw features if ImageDataGenerator is blank
+    #Keras OrderedEnqueuer is used to write  to  HDF5 caches
     model.write_generator(generator, 
                           steps = int(ceil(generator.samples/ batch_size)),
                           max_queue_size=10,
@@ -52,6 +53,7 @@
     f1_label = h5.File(all_labels_hdf5, 'r')
     # Shuffle:false(training or validation sequence wont be shuffled. They will be in order and faster to fetch)
     # fit_generator shuffle flag only shuffles the batches. 
+    #Keras OrderedEnqueuer is used to read from  HDF5 caches
     train_generator = datagen.flow_hdf5( f1_trainvalidation['data'],
                                          f1_label['data'],
                                          subset = 'training',
