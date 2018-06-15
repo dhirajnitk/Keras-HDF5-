@@ -1,4 +1,4 @@
-# Keras-HDF5 Read/Write With h5py-cache 
+# Keras-HDF5 Read/Write With h5py-cache. Keras OrderedEnqueuer is used to fetech from HDF5 caches
 
 ### write_generator: Writing resized image features to HDF5 File
 ``` 
