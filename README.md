@@ -1,8 +1,7 @@
 # Keras-HDF5-
 
-### write_predict_generator
+### write_generator: Writing resized image features to HDF5 File
 ```
- 
     datagen = ImageDataGenerator()
     #Build a fake model
     model = Sequential()
@@ -28,7 +27,7 @@
     f1_label.close()
     
  ```
- ###  write_predict_generator
+ ###  write_predict_generator : : Writing bottlneck features to HDF5 File
  
  ```
     #With a genuine model, you can write the bottlenecl features to files after applying an image data generator
@@ -38,8 +37,8 @@
                                     h5py_file = all_features_hdf5,
                                     h5py_label =all_labels_hdf5)
 ```
-### flow_hdf5
-
+### flow_hdf5 : Read from HDF5 File using a sequence Iterator(HDF5MatrixCacheIterator).
+ 
 ```
   # apply_gen_transform is required if  Features are to be transformed and standardized. 
     datagen = ImageDataGenerator(preprocessing_function = preprocess_input,
@@ -47,8 +46,8 @@
                             apply_gen_transform= True)
     f1_trainvalidation = h5c.File(all_features_hdf5, 'r',chunk_cache_mem_size=total_mem_usage//dividing_factor)
     f1_label = h5.File(all_labels_hdf5, 'r')
-    # Shuffle false ensures  training or validation sequence wont be shuffled. They will be in order. 
-    # fit_gernator shuffle only shuffles the batches
+    # Shuffle false ensures  training or validation sequence wont be shuffled. They will be in order and faster to fetch
+    # fit_generaator shuffle flag only shuffles the batches
     train_generator = datagen.flow_hdf5(
         f1_trainvalidation['data'],
         f1_label['data'],
