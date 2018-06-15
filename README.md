@@ -19,45 +19,41 @@
     # Writes Raw features if ImageDataGenerator is blank
     model.write_generator(generator, 
                           steps = int(ceil(generator.samples/ batch_size)),
-                           max_queue_size=10,
-                           workers=4,
-                           d_set= d1_all,
-                           label_set =d1_label)
+                          max_queue_size=10,
+                          workers=4,
+                          d_set= d1_all,
+                          label_set =d1_label)
     f1_all.close()
     f1_label.close()
     
  ```
- ###  write_predict_generator : : Writing bottlneck features to HDF5 File
+ ###  write_predict_generator :  Writing bottlneck features to HDF5 File
  
  ```
-    #With a genuine model, you can write the bottlenecl features to files after applying an image data generator
+    #With a genuine model, you can write the bottleneck features to files after flow_from_directory
     model.write_predict_generator(generator, 
-                                    steps=generator.samples//batch_size,
-                                    max_queue_size=10,
-                                    h5py_file = all_features_hdf5,
-                                    h5py_label =all_labels_hdf5)
+                                  steps=generator.samples//batch_size,
+                                  max_queue_size=10,
+                                  h5py_file = all_features_hdf5,
+                                  h5py_label =all_labels_hdf5)
 ```
-### flow_hdf5 : Read from HDF5 File using a sequence Iterator(HDF5MatrixCacheIterator).
+### flow_hdf5 :  Read from HDF5 File using a sequence Iterator(HDF5MatrixCacheIterator).
  
 ```
-  # apply_gen_transform is required if  Features are to be transformed and standardized. 
+  # apply_gen_transform is required if  Features are to be transformed and standardized. Default is False
     datagen = ImageDataGenerator(preprocessing_function = preprocess_input,
-                            validation_split=0.2,
-                            apply_gen_transform= True)
+                                 validation_split=0.2,
+                                 apply_gen_transform= True)
     f1_trainvalidation = h5c.File(all_features_hdf5, 'r',chunk_cache_mem_size=total_mem_usage//dividing_factor)
     f1_label = h5.File(all_labels_hdf5, 'r')
     # Shuffle false ensures  training or validation sequence wont be shuffled. They will be in order and faster to fetch
-    # fit_generaator shuffle flag only shuffles the batches
-    train_generator = datagen.flow_hdf5(
-        f1_trainvalidation['data'],
-        f1_label['data'],
-        subset = 'training',
-        batch_size=batch_size,
-        shuffle=False)
-    validation_generator = datagen.flow_hdf5(
-        f1_trainvalidation['data'],
-        f1_label['data'],
-        subset = 'validation',
-        batch_size=batch_size,
-        shuffle=False)
+    # fit_generaator shuffle flag only shuffles the batches. Default for Shuffle is False
+    train_generator = datagen.flow_hdf5( f1_trainvalidation['data'],
+                                         f1_label['data'],
+                                         subset = 'training',
+                                         shuffle=False)
+    validation_generator = datagen.flow_hdf5(f1_trainvalidation['data'],
+                                            f1_label['data'],
+                                            subset = 'validation',
+                                            shuffle=False)
        
