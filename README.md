@@ -50,14 +50,16 @@
                                  apply_gen_transform= True)
     f1_trainvalidation = h5c.File(all_features_hdf5, 'r',chunk_cache_mem_size=total_mem_usage//dividing_factor)
     f1_label = h5.File(all_labels_hdf5, 'r')
-    # Shuffle false ensures  training or validation sequence wont be shuffled. They will be in order and faster to fetch
-    # fit_generaator shuffle flag only shuffles the batches. Default for Shuffle is False
+    # Shuffle:false(training or validation sequence wont be shuffled. They will be in order and faster to fetch)
+    # fit_generator shuffle flag only shuffles the batches. 
     train_generator = datagen.flow_hdf5( f1_trainvalidation['data'],
                                          f1_label['data'],
                                          subset = 'training',
-                                         shuffle=False)
+                                         shuffle=False #Default for Shuffle is False
+                                         )
     validation_generator = datagen.flow_hdf5(f1_trainvalidation['data'],
                                             f1_label['data'],
                                             subset = 'validation',
-                                            shuffle=False)
+                                            shuffle=False ##Default for Shuffle is False
+                                            )
        
