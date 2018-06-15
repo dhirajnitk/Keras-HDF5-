@@ -1,7 +1,9 @@
 # Keras-HDF5 Read/Write With h5py-cache 
 
 ### write_generator: Writing resized image features to HDF5 File
-```
+``` 
+    import h5py_cache as h5c
+    import h5py as h5
     datagen = ImageDataGenerator()
     #Build a fake model
     model = Sequential()
@@ -32,7 +34,7 @@
  ```
     
     #With a genuine model, you can write the bottleneck features to files after flow_from_directory
-    # h5py_file and h5py_label corresponding file names for train and label .h5 files. 
+    # h5py_file and h5py_label  are corresponding file names for train and label .h5 files. 
     model.write_predict_generator(generator, 
                                   steps=generator.samples//batch_size,
                                   max_queue_size=10,
@@ -42,7 +44,7 @@
 ### flow_hdf5 :  Read from HDF5 File using a sequence Iterator(HDF5MatrixCacheIterator).
  
 ```
-  # apply_gen_transform is required if  Features are to be transformed and standardized. Default is False
+  # Apply_gen_transform is required if  Features are to be transformed and standardized. Default is False
     datagen = ImageDataGenerator(preprocessing_function = preprocess_input,
                                  validation_split=0.2,
                                  apply_gen_transform= True)
