@@ -29,6 +29,7 @@
     
  ```
  ###  write_predict_generator
+ 
  ```
     #With a genuine model, you can write the bottlenecl features to files after applying an image data generator
     model.write_predict_generator(generator, 
@@ -38,6 +39,7 @@
                                     h5py_label =all_labels_hdf5)
 ```
 ### flow_hdf5
+
 ```
   # apply_gen_transform is required if  Features are to be transformed and standardized. 
     datagen = ImageDataGenerator(preprocessing_function = preprocess_input,
@@ -59,5 +61,4 @@
         subset = 'validation',
         batch_size=batch_size,
         shuffle=False)
-        
-    ```
+       
