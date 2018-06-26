@@ -2543,13 +2543,14 @@ class Model(Container):
             f1_data = h5c.File(h5py_file, 'w',chunk_cache_mem_size=total_mem_usage//dividing_factor)
             f1_label = h5.File(h5py_label, 'w')
             d_set = f1_data.create_dataset('data', shape,dtype='float32',chunks=chunk_shape,compression="lzf")
-            if(generator.table_pd.empty):
+            if(generator.table_pd is None):
                 if (generator.num_classes<= 2):
                     label_set = f1_label.create_dataset('data', (generator.samples,) ,dtype='float32')
                 else:
                     label_set = f1_label.create_dataset('data', (generator.samples,generator.num_classes) ,dtype='float32')
             else:
-                label_set = f1_label.create_dataset('data', (generator.samples,len(generator.table_pd.columns)) ,dtype='float32')
+                #label_set = f1_label.create_dataset('data', (generator.samples,len(generator.table_pd.columns)) ,dtype='float32')
+                label_set = f1_label.create_dataset('data', (generator.samples,len(generator.table_classes)) ,dtype='float32')
             d_set[0:batch_size] = x
             label_set[0:batch_size] = y
             while steps_done < steps:

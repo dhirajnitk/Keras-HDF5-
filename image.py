@@ -43,6 +43,26 @@ if pil_image is not None:
     if hasattr(pil_image, 'LANCZOS'):
         _PIL_INTERPOLATION_METHODS['lanczos'] = pil_image.LANCZOS
 
+def matrix_random_crop(batch_x, imgs, random_crop_size):
+    # Note: image_data_format is 'channel_last'
+    #assert img.shape[2] == 3
+    batch_size, height, width = imgs.shape[0], imgs.shape[1], img.shape[2]
+    dy, dx = random_crop_size
+    xs = np.random.randint(0, width - dx + 1, batch_size)
+    ys = np.random.randint(0, height - dy + 1, batch_size)
+    for index in range(len(batch_x)):
+        batch_x[index, :, :] = imgs[index,ys[index]:ys[index]+dy, xs[index]:xs[index]+ds,:]
+    return batch_x
+
+def random_crop(img, random_crop_size):
+    # Note: image_data_format is 'channel_last'
+    #assert img.shape[2] == 3
+    height, width = img.shape[0], img.shape[1]
+    dy, dx = random_crop_size
+    x = np.random.randint(0, width - dx + 1)
+    y = np.random.randint(0, height - dy + 1)
+    return img[y:(y+dy), x:(x+dx), :]
+
 
 def random_rotation(x, rg, row_axis=1, col_axis=2, channel_axis=0,
                     fill_mode='nearest', cval=0.):
@@ -707,7 +727,7 @@ class ImageDataGenerator(object):
             save_format=save_format,
             subset=subset)
 
-    def flow_hdf5(self, x, y=None, batch_size=32, shuffle=False, seed=None,
+    def flow_hdf5(self, x, y=None, batch_size=32, shuffle=False, crop = False, crop_size=(224,224), seed=None,
              save_to_dir=None, save_prefix='', save_format='png', subset=None):
         """Takes HDF5Matrix data & label arrays, and generates batches of
             augmented/normalized data.
@@ -738,6 +758,8 @@ class ImageDataGenerator(object):
             x, y, self,
             batch_size=batch_size,
             shuffle=shuffle,
+            crop = crop,
+            crop_size = crop_size,
             seed=seed,
             data_format=self.data_format,
             save_to_dir=save_to_dir,
@@ -745,16 +767,17 @@ class ImageDataGenerator(object):
             save_format=save_format,
             subset=subset)
     def flow_from_directory(self, directory,
-                            target_size=(256, 256), color_mode='rgb',
+                            target_size=(256, 256), crop_size = (224,224),color_mode='rgb',
                             classes=None, class_mode='categorical',
-                            batch_size=32, shuffle=True, seed=None,
+                            batch_size=32, shuffle=True, crop=False,seed=None,
                             save_to_dir=None,
                             save_prefix='',
                             save_format='png',
                             follow_links=False,
                             subset=None,
                             interpolation='nearest',
-                            table_pd = None):
+                            table_pd = None,
+                            test_pd = None):
         """Takes the path to a directory, and generates batches of augmented/normalized data.
 
         # Arguments
@@ -804,17 +827,18 @@ class ImageDataGenerator(object):
         """
         return DirectoryIterator(
             directory, self,
-            target_size=target_size, color_mode=color_mode,
+            target_size=target_size, crop_size = crop_size, color_mode=color_mode,
             classes=classes, class_mode=class_mode,
             data_format=self.data_format,
-            batch_size=batch_size, shuffle=shuffle, seed=seed,
+            batch_size=batch_size, shuffle=shuffle, crop=crop,seed=seed,
             save_to_dir=save_to_dir,
             save_prefix=save_prefix,
             save_format=save_format,
             follow_links=follow_links,
             subset=subset,
             interpolation=interpolation,
-            table_pd=table_pd)
+            table_pd=table_pd,
+            test_pd = test_pd)
 
     def standardize(self, x):
         """Apply the normalization configuration to a batch of inputs.
@@ -1255,7 +1279,7 @@ class HDF5MatrixCacheIterator(Iterator):
     """
 
     def __init__(self, x, y, image_data_generator,
-                 batch_size=32, shuffle=False, seed=None,
+                 batch_size=32, shuffle=False, crop = False, crop_size = (224,224), seed=None,
                  data_format=None,
                  save_to_dir=None, save_prefix='', save_format='png',
                  subset=None):
@@ -1280,7 +1304,10 @@ class HDF5MatrixCacheIterator(Iterator):
         self.x = x
         self.y = y
         self.shuffle = shuffle
-    
+        self.crop = crop
+        self.subset = subset
+        if(self.crop):
+            self.crop_size = crop_size
         self.image_data_generator = image_data_generator
         self.data_format = data_format
         self.save_to_dir = save_to_dir
@@ -1295,36 +1322,47 @@ class HDF5MatrixCacheIterator(Iterator):
             super(HDF5MatrixCacheIterator, self).__init__(x.shape[0], batch_size, shuffle, seed)
 
     def _get_batches_of_transformed_samples(self, index_array):
-        
-        batch_x = np.zeros(tuple([len(index_array)] + list(self.x.shape)[1:]),
+        if(not self.crop):
+            batch_x = np.zeros(tuple([len(index_array)] + list(self.x.shape)[1:]),
+                           dtype=K.floatx())
+        else:
+            batch_x = np.zeros(tuple([len(index_array)] + list(self.crop_size) + [self.x.shape[-1]]),
                            dtype=K.floatx())
         offset = 0 if not self.split else self.split
         if(self.image_data_generator.apply_gen_transform):
             for i, j in enumerate(index_array):
                 x = self.x[offset+j]
-                x = self.image_data_generator.random_transform(x.astype(K.floatx()))
+                if(self.crop):
+                    x = random_crop(x, self.crop_size)
+                if(self.subset == 'training'):
+                    x = self.image_data_generator.random_transform(x.astype(K.floatx()))
                 x = self.image_data_generator.standardize(x)
                 batch_x[i] = x
         elif self.shuffle:
             for i, j in enumerate(index_array):
                 x = self.x[offset+j]
+                if(self.crop):
+                    x = random_crop(x, self.crop_size)
                 batch_x[i] = x
         else:
             batch = [index.__add__(offset) for index in index_array]
-            batch_x = self.x[batch]
+            if(not self.crop):
+                batch_x = self.x[batch]
+            else:
+                batch_x = matrix_random_crop(batch_x, self.x[batch],self.crop_size)
         if self.save_to_dir:
-	    if self.x.ndim != 4:
-            		raise ValueError('Input data in `HDF5MatrixCacheIterator` '
+            if self.x.ndim != 4:
+                raise ValueError('Input data in `HDF5MatrixCacheIterator` '
                              'should have rank 4. You passed an array '
                              'with shape', self.x.shape)
-			channels_axis = 3 if self.data_format == 'channels_last' else 1
-	    if self.x.shape[channels_axis] not in {1, 3, 4}:
-		        warnings.warn('HDF5MatrixCacheIterator is set to use the '
-		                      'data format convention "' + data_format + '" '
-		                      '(channels on axis ' + str(channels_axis) + '), i.e. expected '
-		                      'either 1, 3 or 4 channels on axis ' + str(channels_axis) + '. '
-		                      'However, it was passed an array with shape ' + str(self.x.shape) +
-		                      ' (' + str(self.x.shape[channels_axis]) + ' channels).')
+            channels_axis = 3 if self.data_format == 'channels_last' else 1
+            if self.x.shape[channels_axis] not in {1, 3, 4}:
+                warnings.warn('HDF5MatrixCacheIterator is set to use the '
+                              'data format convention "' + data_format + '" '
+                              '(channels on axis ' + str(channels_axis) + '), i.e. expected '
+                              'either 1, 3 or 4 channels on axis ' + str(channels_axis) + '. '
+                              'However, it was passed an array with shape ' + str(self.x.shape) +
+                              ' (' + str(self.x.shape[channels_axis]) + ' channels).')
             for i, j in enumerate(index_array):
                 img = array_to_img(batch_x[i], self.data_format, scale=True)
                 fname = '{prefix}_{index}_{hash}.{format}'.format(prefix=self.save_prefix,
@@ -1334,7 +1372,7 @@ class HDF5MatrixCacheIterator(Iterator):
                 img.save(os.path.join(self.save_to_dir, fname))
         if self.y is None:
             return batch_x
-        if(self.shuffle):
+        elif(self.shuffle):
             batch_y = np.zeros(tuple([len(index_array)] + list(self.y.shape)[1:]),
                            dtype=K.floatx())
             for i, j in enumerate(index_array):
@@ -1498,20 +1536,24 @@ class DirectoryIterator(Iterator):
     """
 
     def __init__(self, directory, image_data_generator,
-                 target_size=(256, 256), color_mode='rgb',
+                 target_size=(256, 256), crop_size = (224,224), color_mode='rgb',
                  classes=None, class_mode='categorical',
-                 batch_size=32, shuffle=True, seed=None,
+                 batch_size=32, shuffle=True, crop = False, seed=None,
                  data_format=None,
                  save_to_dir=None, save_prefix='', save_format='png',
                  follow_links=False,
                  subset=None,
                  interpolation='nearest',
-                 table_pd = None):
+                 table_pd = None,
+                 test_pd = None):
         if data_format is None:
             data_format = K.image_data_format()
         self.directory = directory
         self.image_data_generator = image_data_generator
         self.target_size = tuple(target_size)
+        self.crop = crop
+        if(self.crop):
+            self.crop_size = tuple(crop_size)
         if color_mode not in {'rgb', 'grayscale'}:
             raise ValueError('Invalid color mode:', color_mode,
                              '; expected "rgb" or "grayscale".')
@@ -1540,6 +1582,11 @@ class DirectoryIterator(Iterator):
         self.save_format = save_format
         self.interpolation = interpolation
         self.table_pd = table_pd
+        self.test_pd = test_pd
+        if(table_pd is not None):
+            self.table_classes = np.unique(table_pd.iloc[:,0].values)
+            #self.table_classes = np.unique(table_pd[:].values)
+            self.table_class_indices = dict(zip(self.table_classes, range(len(self.table_classes))))
         if subset is not None:
             validation_split = self.image_data_generator._validation_split
             if subset == 'validation':
@@ -1598,7 +1645,12 @@ class DirectoryIterator(Iterator):
         super(DirectoryIterator, self).__init__(self.samples, batch_size, shuffle, seed)
 
     def _get_batches_of_transformed_samples(self, index_array):
-        batch_x = np.zeros((len(index_array),) + self.image_shape, dtype=K.floatx())
+        if(not self.crop):
+            batch_x = np.zeros((len(index_array),) + self.image_shape, dtype=K.floatx())
+        else:
+            batch_x = np.zeros(tuple([len(index_array)] + list(self.crop_size) + [self.image_shape[-1]]),
+                           dtype=K.floatx())
+        #batch_x = np.zeros((len(index_array),) + self.image_shape, dtype=K.floatx())
         grayscale = self.color_mode == 'grayscale'
         # build batch of image data
         for i, j in enumerate(index_array):
@@ -1608,7 +1660,11 @@ class DirectoryIterator(Iterator):
                            target_size=self.target_size,
                            interpolation=self.interpolation)
             x = img_to_array(img, data_format=self.data_format)
-            x = self.image_data_generator.random_transform(x)
+            if(self.subset == 'training'):
+                #Crop the image to crop_size.
+                if(self.crop):
+                    x = random_crop(x,self.crop_size)
+                x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
             batch_x[i] = x
         # optionally save augmented images to disk for debugging purposes
@@ -1631,9 +1687,15 @@ class DirectoryIterator(Iterator):
             batch_y = np.zeros((len(batch_x), self.num_classes), dtype=K.floatx())
             for i, label in enumerate(self.classes[index_array]):
                 batch_y[i, label] = 1.
-        elif not self.table_pd.empty :
+        elif self.table_pd is not None :
             filenames = [self.filenames[i].split(os.sep)[-1] for i in index_array]
-            batch_y = self.table_pd.loc[filenames].values
+            ys = self.table_pd.loc[filenames].values.flatten()
+            batch_y = np.zeros((len(batch_x), len(self.table_classes)), dtype=K.floatx())
+            for i, label in enumerate(ys.tolist()):
+                batch_y[i, self.table_class_indices[label]] = 1.
+        elif self.test_pd is not None :
+            filenames = [self.filenames[i].split(os.sep)[-1] for i in index_array]
+            batch_y = filenames
         else:
             return batch_x
         return batch_x, batch_y
