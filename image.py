@@ -1334,7 +1334,7 @@ class HDF5MatrixCacheIterator(Iterator):
                 x = self.x[offset+j]
                 if(self.crop):
                     x = random_crop(x, self.crop_size)
-                if(self.subset == 'training'):
+                if(self.subset is None or self.subset == 'training'):
                     x = self.image_data_generator.random_transform(x.astype(K.floatx()))
                 x = self.image_data_generator.standardize(x)
                 batch_x[i] = x
